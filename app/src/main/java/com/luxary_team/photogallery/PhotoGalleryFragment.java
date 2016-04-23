@@ -1,6 +1,8 @@
 package com.luxary_team.photogallery;
 
 import android.app.Fragment;
+import android.app.ProgressDialog;
+import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.widget.GridLayoutManager;
@@ -27,7 +29,7 @@ public class PhotoGalleryFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
-        new FetchItemsTask().execute();
+        new FetchItemsTask(getActivity()).execute();
     }
 
     @Override
@@ -74,7 +76,7 @@ public class PhotoGalleryFragment extends Fragment {
                 if (!loading) {
                     loading = true;
                     mPage++;
-                    new FetchItemsTask().execute();
+                    new FetchItemsTask(getActivity()).execute();
                 }
             }
         }
@@ -118,7 +120,22 @@ public class PhotoGalleryFragment extends Fragment {
         }
     }
 
+
+
     private class FetchItemsTask extends AsyncTask<Void, Void, List<GalleryItem>> {
+
+        private ProgressDialog mProgressDialog;
+        private Context c;
+
+        public FetchItemsTask(Context c) {
+            this.c = c;
+            mProgressDialog = new ProgressDialog(c);
+        }
+
+        protected void onPreExecute() {
+            this.mProgressDialog.setMessage("Loading");
+            this.mProgressDialog.show();
+        }
 
         @Override
         protected List<GalleryItem> doInBackground(Void... params) {
@@ -130,6 +147,9 @@ public class PhotoGalleryFragment extends Fragment {
             mItems = galleryItems;
 //            mItems.addAll(galleryItems);
             setupAdapter();
+            if (mProgressDialog.isShowing()) {
+                mProgressDialog.dismiss();
+            }
         }
     }
 
@@ -139,3 +159,4 @@ public class PhotoGalleryFragment extends Fragment {
         return fragment;
     }
 }
+
