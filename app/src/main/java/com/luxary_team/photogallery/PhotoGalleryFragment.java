@@ -11,7 +11,10 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
+
+import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +24,7 @@ public class PhotoGalleryFragment extends Fragment {
 
     private RecyclerView mPhotoRecyclerView;
     private List<GalleryItem> mItems = new ArrayList<>();
+    private ThumbnailDownloader<PhotoHolder> mThumbnailDownloader;
 
     private boolean loading = true;
     public int mPage = 1;
@@ -30,6 +34,11 @@ public class PhotoGalleryFragment extends Fragment {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
         new FetchItemsTask(getActivity()).execute();
+
+        mThumbnailDownloader = new ThumbnailDownloader<>();
+        mThumbnailDownloader.start();
+        mThumbnailDownloader.getLooper();
+        Log.d(TAG, "background process started");
     }
 
     @Override
@@ -37,7 +46,7 @@ public class PhotoGalleryFragment extends Fragment {
         View rootView = inflater.inflate(R.layout.fragment_photo_gallery, container, false);
 
         mPhotoRecyclerView = (RecyclerView) rootView.findViewById(R.id.fragment_photo_gallery_recyclerView);
-        mPhotoRecyclerView.setLayoutManager(new GridLayoutManager(getActivity(), 3));
+        mPhotoRecyclerView.setLayoutManager(new GridLayoutManager(getActivity(), 2));
         mPhotoRecyclerView.addOnScrollListener(new PhotoScrollListener());
 
         setupAdapter();
@@ -83,15 +92,24 @@ public class PhotoGalleryFragment extends Fragment {
     }
 
     private class PhotoHolder extends RecyclerView.ViewHolder {
-        private TextView mTitleTextView;
+        private ImageView mPhotoImageView;
+        private TextView mTextView;
 
         public PhotoHolder(View itemView) {
             super(itemView);
-            mTitleTextView = (TextView) itemView;
+            mPhotoImageView = (ImageView) itemView.findViewById(R.id.fragment_photo_gallery_imageView);
+            mTextView = (TextView) itemView.findViewById(R.id.text_view);
         }
 
         public void bindGalleryItem(GalleryItem item) {
-            mTitleTextView.setText(item.toString());
+            String s = item.getCaption();
+            if (s.length() > 20)
+                s = s.substring(0, 20) + "...";
+            mTextView.setText(s);
+            Picasso.with(getActivity())
+                    .load(item.getUrl())
+                    .placeholder(R.drawable.loading)
+                    .into(mPhotoImageView);
         }
     }
 
@@ -104,8 +122,9 @@ public class PhotoGalleryFragment extends Fragment {
 
         @Override
         public PhotoHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-            TextView textView = new TextView(getActivity());
-            return new PhotoHolder(textView);
+            LayoutInflater inflater = LayoutInflater.from(getActivity());
+            View view = inflater.inflate(R.layout.gallery_item, parent, false);
+            return new PhotoHolder(view);
         }
 
         @Override
@@ -119,8 +138,6 @@ public class PhotoGalleryFragment extends Fragment {
             return mGalleryItems.size();
         }
     }
-
-
 
     private class FetchItemsTask extends AsyncTask<Void, Void, List<GalleryItem>> {
 
@@ -157,6 +174,13 @@ public class PhotoGalleryFragment extends Fragment {
         PhotoGalleryFragment fragment = new PhotoGalleryFragment();
 
         return fragment;
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        mThumbnailDownloader.quit();
+        Log.d(TAG, "background process destroy");
     }
 }
 
