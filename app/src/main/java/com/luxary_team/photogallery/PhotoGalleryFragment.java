@@ -30,7 +30,7 @@ public class PhotoGalleryFragment extends Fragment {
     private List<GalleryItem> mItems = new ArrayList<>();
 
     private boolean loading = true;
-    public int mPage = 1;
+    public volatile int mPage = 1;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -144,10 +144,12 @@ public class PhotoGalleryFragment extends Fragment {
 
         private ProgressDialog mProgressDialog;
         private Context c;
+        private String mQuery;
 
-        public FetchItemsTask(Context c) {
+        public FetchItemsTask(Context c, String query) {
             this.c = c;
             mProgressDialog = new ProgressDialog(c);
+            mQuery = query;
         }
 
         protected void onPreExecute() {
@@ -157,12 +159,12 @@ public class PhotoGalleryFragment extends Fragment {
 
         @Override
         protected List<GalleryItem> doInBackground(Void... params) {
-            String query = null;//"girl"; // Для тестирования
+//            String query = null;//"robot"; //todo for testing
 
-            if (query == null) {
+            if (mQuery == null) {
                 return new FlickrFetchr().fetchRecentPhotos(mPage, mItems);
             } else {
-                return new FlickrFetchr().searchPhotos(query, mItems);
+                return new FlickrFetchr().searchPhotos(mPage, mQuery, mItems);
             }
         }
 
@@ -188,7 +190,7 @@ public class PhotoGalleryFragment extends Fragment {
         super.onCreateOptionsMenu(menu, inflater);
         inflater.inflate(R.menu.fragment_photo_gallery, menu);
 
-        MenuItem searchItem = menu.findItem(R.id.menu_item_search);
+        final MenuItem searchItem = menu.findItem(R.id.menu_item_search);
         final SearchView searchView= (SearchView) searchItem.getActionView();
 
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
@@ -196,6 +198,9 @@ public class PhotoGalleryFragment extends Fragment {
             @Override
             public boolean onQueryTextSubmit(String query) {
                 Log.d(TAG, "QueryTextSubmit : " + query);
+                QueryPreferences.setStoredQuery(getActivity(), query);
+                mPage = 1;
+                mItems.clear();
                 updateItems();
                 return true;
             }
@@ -207,10 +212,44 @@ public class PhotoGalleryFragment extends Fragment {
             }
         });
 
+        searchView.setOnSearchClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String query = QueryPreferences.getStoredQuery(getActivity());
+                searchView.setQuery(query, false);
+            } });
+
+        final MenuItem clearSearch = menu.findItem(R.id.menu_item_clear);
+        clearSearch.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item) {
+                if (!searchView.isIconified())
+                    searchView.setIconified(true);
+
+                return true;
+            }
+        });
+
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.menu_item_clear:
+                QueryPreferences.setStoredQuery(getActivity(), null);
+                mPage = 1;
+                mItems.clear();
+                updateItems();
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
     }
 
     private void updateItems() {
-        new FetchItemsTask(getActivity()).execute();
+        String query = QueryPreferences.getStoredQuery(getActivity());
+        new FetchItemsTask(getActivity(), query).execute();
     }
+
 }
 
