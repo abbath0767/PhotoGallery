@@ -7,8 +7,12 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.SearchView;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -24,7 +28,6 @@ public class PhotoGalleryFragment extends Fragment {
 
     private RecyclerView mPhotoRecyclerView;
     private List<GalleryItem> mItems = new ArrayList<>();
-    private ThumbnailDownloader<PhotoHolder> mThumbnailDownloader;
 
     private boolean loading = true;
     public int mPage = 1;
@@ -33,12 +36,8 @@ public class PhotoGalleryFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
-        new FetchItemsTask(getActivity()).execute();
-
-        mThumbnailDownloader = new ThumbnailDownloader<>();
-        mThumbnailDownloader.start();
-        mThumbnailDownloader.getLooper();
-        Log.d(TAG, "background process started");
+        setHasOptionsMenu(true);
+        updateItems();
     }
 
     @Override
@@ -85,7 +84,7 @@ public class PhotoGalleryFragment extends Fragment {
                 if (!loading) {
                     loading = true;
                     mPage++;
-                    new FetchItemsTask(getActivity()).execute();
+                    updateItems();
                 }
             }
         }
@@ -105,6 +104,8 @@ public class PhotoGalleryFragment extends Fragment {
             String s = item.getCaption();
             if (s.length() > 20)
                 s = s.substring(0, 20) + "...";
+            else if (s == null)
+                s = "Nice picture";
             mTextView.setText(s);
             Picasso.with(getActivity())
                     .load(item.getUrl())
@@ -156,7 +157,13 @@ public class PhotoGalleryFragment extends Fragment {
 
         @Override
         protected List<GalleryItem> doInBackground(Void... params) {
-            return new FlickrFetchr().fetchItems(mPage, mItems);
+            String query = null;//"girl"; // Для тестирования
+
+            if (query == null) {
+                return new FlickrFetchr().fetchRecentPhotos(mPage, mItems);
+            } else {
+                return new FlickrFetchr().searchPhotos(query, mItems);
+            }
         }
 
         @Override
@@ -177,10 +184,33 @@ public class PhotoGalleryFragment extends Fragment {
     }
 
     @Override
-    public void onDestroy() {
-        super.onDestroy();
-        mThumbnailDownloader.quit();
-        Log.d(TAG, "background process destroy");
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        super.onCreateOptionsMenu(menu, inflater);
+        inflater.inflate(R.menu.fragment_photo_gallery, menu);
+
+        MenuItem searchItem = menu.findItem(R.id.menu_item_search);
+        final SearchView searchView= (SearchView) searchItem.getActionView();
+
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                Log.d(TAG, "QueryTextSubmit : " + query);
+                updateItems();
+                return true;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                Log.d(TAG, "QueryTextChange: " + newText);
+                return false;
+            }
+        });
+
+    }
+
+    private void updateItems() {
+        new FetchItemsTask(getActivity()).execute();
     }
 }
 
