@@ -5,6 +5,7 @@ import android.app.ProgressDialog;
 import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.SearchView;
@@ -45,7 +46,7 @@ public class PhotoGalleryFragment extends Fragment {
         View rootView = inflater.inflate(R.layout.fragment_photo_gallery, container, false);
 
         mPhotoRecyclerView = (RecyclerView) rootView.findViewById(R.id.fragment_photo_gallery_recyclerView);
-        mPhotoRecyclerView.setLayoutManager(new GridLayoutManager(getActivity(), 2));
+        mPhotoRecyclerView.setLayoutManager(new GridLayoutManager(getActivity(), 3));
         mPhotoRecyclerView.addOnScrollListener(new PhotoScrollListener());
 
         setupAdapter();
@@ -201,6 +202,8 @@ public class PhotoGalleryFragment extends Fragment {
                 QueryPreferences.setStoredQuery(getActivity(), query);
                 mPage = 1;
                 mItems.clear();
+                searchView.onActionViewCollapsed(); //closed after Search keyboard
+                ((AppCompatActivity)getActivity()).getSupportActionBar().setSubtitle(query);
                 updateItems();
                 return true;
             }
@@ -212,23 +215,28 @@ public class PhotoGalleryFragment extends Fragment {
             }
         });
 
-        searchView.setOnSearchClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String query = QueryPreferences.getStoredQuery(getActivity());
-                searchView.setQuery(query, false);
-            } });
+        MenuItem toggleItem = menu.findItem(R.id.menu_item_toggle_polling);
+        if (PollService.isServiceAlaramOn(getActivity()))
+            toggleItem.setTitle(R.string.stop_polling);
+        else
+            toggleItem.setTitle(R.string.start_polling);
 
-        final MenuItem clearSearch = menu.findItem(R.id.menu_item_clear);
-        clearSearch.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-            @Override
-            public boolean onMenuItemClick(MenuItem item) {
-                if (!searchView.isIconified())
-                    searchView.setIconified(true);
-
-                return true;
-            }
-        });
+//        searchView.setOnSearchClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                String query = QueryPreferences.getStoredQuery(getActivity());
+//                searchView.setQuery(query, false);
+//            } });
+//
+//        final MenuItem clearSearch = menu.findItem(R.id.menu_item_clear);
+//        clearSearch.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+//            @Override
+//            public boolean onMenuItemClick(MenuItem item) {
+//                if (!searchView.isIconified())
+//                    searchView.setIconified(true);
+//                return true;
+//            }
+//        });
 
     }
 
@@ -239,7 +247,13 @@ public class PhotoGalleryFragment extends Fragment {
                 QueryPreferences.setStoredQuery(getActivity(), null);
                 mPage = 1;
                 mItems.clear();
+                ((AppCompatActivity)getActivity()).getSupportActionBar().setSubtitle(null);
                 updateItems();
+                return true;
+            case R.id.menu_item_toggle_polling:
+                boolean shouldStartAlarm = !PollService.isServiceAlaramOn(getActivity());
+                PollService.setServiceAlarm(getActivity(), shouldStartAlarm);
+                getActivity().invalidateOptionsMenu(); //refresh Menu itmes
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
