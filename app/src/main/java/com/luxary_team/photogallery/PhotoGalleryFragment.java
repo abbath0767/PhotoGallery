@@ -1,8 +1,8 @@
 package com.luxary_team.photogallery;
 
-import android.app.Fragment;
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
@@ -24,7 +24,7 @@ import com.squareup.picasso.Picasso;
 import java.util.ArrayList;
 import java.util.List;
 
-public class PhotoGalleryFragment extends Fragment {
+public class PhotoGalleryFragment extends VisibleFragment {
     public static final String TAG = "photoTag";
 
     private RecyclerView mPhotoRecyclerView;
@@ -91,14 +91,16 @@ public class PhotoGalleryFragment extends Fragment {
         }
     }
 
-    private class PhotoHolder extends RecyclerView.ViewHolder {
+    private class PhotoHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
         private ImageView mPhotoImageView;
         private TextView mTextView;
+        private GalleryItem mGalleryItem;
 
         public PhotoHolder(View itemView) {
             super(itemView);
             mPhotoImageView = (ImageView) itemView.findViewById(R.id.fragment_photo_gallery_imageView);
             mTextView = (TextView) itemView.findViewById(R.id.text_view);
+            itemView.setOnClickListener(this);
         }
 
         public void bindGalleryItem(GalleryItem item) {
@@ -112,6 +114,13 @@ public class PhotoGalleryFragment extends Fragment {
                     .load(item.getUrl())
                     .placeholder(R.drawable.loading)
                     .into(mPhotoImageView);
+            mGalleryItem = item;
+        }
+
+        @Override
+        public void onClick(View v) {
+            Intent i = PhotoPageActivity.newIntent(getActivity(), mGalleryItem.getPhotoPageUri());
+            startActivity(i);
         }
     }
 
